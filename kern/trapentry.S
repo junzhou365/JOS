@@ -47,9 +47,29 @@
  * Lab 3: Your code here for generating entry points for the different traps.
  */
 
-
+TRAPHANDLER(divide_zero, T_DIVIDE);    		// divide error
+TRAPHANDLER(debug, T_DEBUG);     		// debug exception
+TRAPHANDLER(non_maskable, T_NMI);       		// non-maskable interrupt
+TRAPHANDLER(breakpoint, T_BRKPT);     		// breakpoint
+TRAPHANDLER(overflow, T_OFLOW);     		// overflow
+TRAPHANDLER(bounds_check, T_BOUND);     		// bounds check
+TRAPHANDLER(illegal_opcode, T_ILLOP);     		// illegal opcode
+TRAPHANDLER(device_unavailable, T_DEVICE);    		// device not available
+TRAPHANDLER(double_fault, T_DBLFLT);    		// double fault
+TRAPHANDLER(invalid_tss, T_TSS);       		// invalid task switch segment
 
 /*
  * Lab 3: Your code here for _alltraps
  */
+
+_alltraps:
+    movw $GD_KD, %ax
+    movw %ax, %ds
+    movw %ax, %es
+
+    /* Push all registers */
+    pushal
+
+    pushl %esp
+    call trap
 
