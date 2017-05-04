@@ -67,6 +67,8 @@ TRAPHANDLER_NOEC(floating_point_error, T_FPERR);
 TRAPHANDLER(alignment_check, T_ALIGN);
 TRAPHANDLER_NOEC(machine_check, T_MCHK);
 TRAPHANDLER_NOEC(simd_fp_error, T_SIMDERR);
+// reserved 16-31
+TRAPHANDLER_NOEC(syscall_handler, T_SYSCALL);
 
 .data
 .global vectors

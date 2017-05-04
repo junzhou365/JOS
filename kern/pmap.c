@@ -558,6 +558,23 @@ int
 user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 {
 	// LAB 3: Your code here.
+    uintptr_t *orig_va = (uintptr_t *)va;
+    uintptr_t *page_aligned_va = (uintptr_t *)ROUNDDOWN(orig_va, PGSIZE);
+    uintptr_t *page_aligned_end = (uintptr_t *)ROUNDUP(orig_va + len, PGSIZE);
+
+    while (page_aligned_va < page_aligned_end) {
+        pte_t *entry = NULL;
+        if ((uintptr_t)page_aligned_va >= ULIM ||
+                page_lookup(env->env_pgdir, page_aligned_va, &entry) == NULL ||
+                (*entry & (perm | PTE_P)) != (perm | PTE_P)) {
+
+            user_mem_check_addr = (uintptr_t)
+                (page_aligned_va < orig_va ? orig_va : page_aligned_va);
+            return -E_FAULT;
+        }
+
+        page_aligned_va += PGSIZE;
+    }
 
 	return 0;
 }
