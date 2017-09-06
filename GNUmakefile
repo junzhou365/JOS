@@ -111,7 +111,7 @@ GCC_LIB := $(shell $(CC) $(CFLAGS) -print-libgcc-file-name)
 OBJDIRS :=
 
 # Make sure that 'all' is the first target
-all:
+all: warn
 
 # Eliminate default suffix rules
 .SUFFIXES:
@@ -314,6 +314,14 @@ myapi.key:
 		false; \
 	fi;
 
+warn:
+	@echo; \
+	echo "[31m******* WARNING *********"; \
+	echo "this is the 2016 6.828 lab"; \
+	echo "******* WARNING ********* [39m"; \
+	echo; \
+	false;
+
 #handin-prep:
 #	@./handin-prep
 
@@ -366,4 +374,5 @@ always:
 	@:
 
 .PHONY: all always \
-	handin git-handin tarball tarball-pref clean realclean distclean grade handin-prep handin-check
+	handin git-handin tarball tarball-pref clean realclean distclean grade handin-prep handin-check \
+	warn
