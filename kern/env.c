@@ -540,6 +540,7 @@ env_run(struct Env *e)
     assert(curenv->env_pgdir != NULL);
     lcr3(PADDR(curenv->env_pgdir));
 
+    unlock_kernel();
     env_pop_tf(&curenv->env_tf);
     panic("should not be reached");
 }
