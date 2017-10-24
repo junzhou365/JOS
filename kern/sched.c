@@ -29,6 +29,33 @@ sched_yield(void)
 	// below to halt the cpu.
 
 	// LAB 4: Your code here.
+    // search the lower half
+    // XXX: search all envs or just runnable?
+    struct Env *last_env = thiscpu->cpu_env;
+    unsigned last_env_index = NENV;
+    struct Env *first_runnable_env = NULL;
+    unsigned i = 0;
+
+    for (idle = &envs[i++]; i < NENV && idle != NULL; idle = &envs[i++]) {
+        if (idle == last_env) {
+            last_env_index = i - 1;
+            continue;
+        }
+
+        if (idle && idle->env_status == ENV_RUNNABLE) {
+            if (first_runnable_env == NULL)
+                first_runnable_env = idle;
+            if (i > last_env_index)
+                env_run(idle); // no return
+        }
+    }
+
+    if (first_runnable_env)
+        env_run(first_runnable_env); // no return
+
+    if (last_env && last_env->env_status == ENV_RUNNING && last_env->env_cpunum == thiscpu->cpu_id) {
+        env_run(last_env); // no return
+    }
 
 	// sched_halt never returns
 	sched_halt();
