@@ -339,6 +339,45 @@ page_fault_handler(struct Trapframe *tf)
 	//   (the 'tf' variable points at 'curenv->env_tf').
 
 	// LAB 4: Your code here.
+    if (curenv->env_pgfault_upcall) {
+        uintptr_t *boarder = (uintptr_t *)(UXSTACKTOP - PGSIZE);
+
+        uintptr_t *ux_stack_top = (uintptr_t *)UXSTACKTOP;
+        if (tf->tf_esp >= UXSTACKTOP - PGSIZE && tf->tf_esp < UXSTACKTOP) {
+            ux_stack_top = (uintptr_t *)tf->tf_esp;
+        }
+        size_t size = sizeof(struct UTrapframe) + 1;
+        user_mem_assert(curenv, ux_stack_top - size, size, PTE_W | PTE_U | PTE_P);
+        --ux_stack_top;
+        if (ux_stack_top < boarder)
+            env_destroy(curenv); // overflow
+
+        // push empty word
+        *ux_stack_top = 0;
+
+        // push UTrapframe
+        struct UTrapframe utf;
+        utf.utf_fault_va = fault_va;
+        utf.utf_err = tf->tf_err;
+        utf.utf_regs = tf->tf_regs;
+        utf.utf_eip = tf->tf_eip;
+        utf.utf_eflags = tf->tf_eflags;
+        utf.utf_esp = tf->tf_esp;
+
+        // basically does the memcpy
+        const uintptr_t *utf_p = (uintptr_t *)&utf;
+        for (uintptr_t *p = ux_stack_top - sizeof(utf);
+                p < ux_stack_top; p++, utf_p++) {
+            *p = *utf_p;
+        }
+
+        ux_stack_top -= sizeof(utf);
+
+        // branch to upcall
+        curenv->env_tf.tf_eip = (uintptr_t)curenv->env_pgfault_upcall;
+        curenv->env_tf.tf_esp = (uintptr_t)ux_stack_top;
+        env_run(curenv);
+    }
 
 	// Destroy the environment that caused the fault.
 	cprintf("[%08x] user fault va %08x ip %08x\n",
