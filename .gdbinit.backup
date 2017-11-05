@@ -1,0 +1,25 @@
+set $i_30 = 0x800ddc
+set $i_31 = 0x800dde
+set $eip_sucks = 0xefffffec
+set can-use-hw-watchpoints 0
+#int30
+b *$i_30
+#after
+b *$i_31
+set height 0
+continue
+
+while 1
+    if $eip == $i_30
+        si
+        x/8x $esp
+        watch *(uint32_t *)0xefffffec
+        set $foo_bp=$bpnum
+    end
+    if $eip == $i_31
+        x/8x $esp
+        delete $foo_bp
+    end
+    continue
+end
+

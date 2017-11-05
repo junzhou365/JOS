@@ -92,6 +92,7 @@ CFLAGS += -Wall -Wno-format -Wno-unused -Werror -gstabs -m32
 # mon_backtrace()'s function prologue on gcc version: (Debian 4.7.2-5) 4.7.2
 CFLAGS += -fno-tree-ch
 
+CFLAGS += -O0
 # Add -fno-stack-protector if the option exists.
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 
@@ -308,7 +309,6 @@ warn:
 	echo "this is the 2016 6.828 lab"; \
 	echo "******* WARNING ********* [39m"; \
 	echo; \
-	false;
 
 #handin-prep:
 #	@./handin-prep
