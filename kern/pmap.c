@@ -639,18 +639,17 @@ int
 user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 {
 	// LAB 3: Your code here.
-    uintptr_t *orig_va = (uintptr_t *)va;
-    uintptr_t *page_aligned_va = (uintptr_t *)ROUNDDOWN(orig_va, PGSIZE);
-    uintptr_t *page_aligned_end = (uintptr_t *)ROUNDUP(orig_va + len, PGSIZE);
+    uintptr_t orig_va = (uintptr_t )va;
+    uintptr_t page_aligned_va = ROUNDDOWN(orig_va, PGSIZE);
+    uintptr_t page_aligned_end = ROUNDUP(orig_va + len, PGSIZE);
 
     while (page_aligned_va < page_aligned_end) {
         pte_t *entry = NULL;
-        if ((uintptr_t)page_aligned_va >= ULIM ||
-                page_lookup(env->env_pgdir, page_aligned_va, &entry) == NULL ||
-                (*entry & (perm | PTE_P)) != (perm | PTE_P)) {
-
-            user_mem_check_addr = (uintptr_t)
-                (page_aligned_va < orig_va ? orig_va : page_aligned_va);
+        bool is_under_ulim = page_aligned_va < ULIM;
+        bool is_page_present = page_lookup(env->env_pgdir, (void *)page_aligned_va, &entry) != NULL;
+        bool is_perm_right = is_page_present && (*entry & (perm | PTE_P)) == (perm | PTE_P);
+        if (!(is_under_ulim && is_page_present && is_perm_right)) {
+            user_mem_check_addr = (page_aligned_va < orig_va ? orig_va : page_aligned_va);
             return -E_FAULT;
         }
 

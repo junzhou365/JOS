@@ -22,6 +22,7 @@ sys_cputs(const char *s, size_t len)
 	// Destroy the environment if not.
 
 	// LAB 3: Your code here.
+    user_mem_assert(curenv, s, len, PTE_U | PTE_P);
 
 	// Print the string supplied by the user.
 	cprintf("%.*s", len, s);
@@ -238,23 +239,25 @@ sys_page_map(envid_t srcenvid, void *srcva,
     if ((ret = envid2env(dstenvid, &dst_env, 1 /*checkperm*/)) < 0)
         return ret;
 
-    bool is_src_va_legal = (uintptr_t)srcva < UTOP && (uintptr_t)srcva % PGSIZE == 0;
-    bool is_dst_va_legal = (uintptr_t)dstva < UTOP && (uintptr_t)dstva % PGSIZE == 0;
+    bool is_src_va_legal = (uintptr_t)srcva < UTOP &&
+        (uintptr_t)srcva % PGSIZE == 0;
+    bool is_dst_va_legal = (uintptr_t)dstva < UTOP &&
+        (uintptr_t)dstva % PGSIZE == 0;
     bool is_perm_right = (perm & PTE_U) == PTE_U && (perm & PTE_P) == PTE_P &&
         (perm & ~PTE_SYSCALL) == 0;
 
-    if (!is_src_va_legal || !is_dst_va_legal || !is_perm_right)
+    if (!is_src_va_legal || !is_dst_va_legal || !is_perm_right) {
         return -E_INVAL;
+    }
 
     struct PageInfo *page;
     pte_t *entry;
     if ((page = page_lookup(src_env->env_pgdir, srcva, &entry)) == NULL)
         return -E_INVAL; // srcva is not mapped into src_env
 
-    if ((perm & PTE_W) == PTE_W && (*entry & PTE_W) == 0)
+    if ((perm & PTE_W) == PTE_W && entry && (*entry & PTE_W) == 0)
         return -E_INVAL;
 
-    cprintf("page %x is inserted at env %d's %x with perm %04x\n", page2pa(page), dst_env->env_id, dstva, perm);
     if ((ret = page_insert(dst_env->env_pgdir, page, dstva, perm)) < 0)
         return ret;
 
@@ -330,7 +333,47 @@ static int
 sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 {
 	// LAB 4: Your code here.
-	panic("sys_ipc_try_send not implemented");
+    int r;
+    struct Env *dst_e;
+    if ((r = envid2env(envid, &dst_e, 0 /*any env*/)) < 0)
+        return r;
+
+    // dst env not blocked or another env managed to send first
+    if (!dst_e->env_ipc_recving ||
+            (dst_e->env_ipc_from != 0 && dst_e->env_ipc_from != curenv->env_id))
+        return -E_IPC_NOT_RECV;
+
+    void *dstva = dst_e->env_ipc_dstva;
+
+    bool page_transfered = 0;
+    if ((uintptr_t)srcva < UTOP && (uintptr_t)dstva < UTOP) {
+        /*panic("should not enter because srcva: %x and dstva: %x\n", srcva, dstva);*/
+        bool is_src_va_legal = (uintptr_t)srcva % PGSIZE == 0;
+        bool is_perm_right = (perm & PTE_U) == PTE_U && (perm & PTE_P) == PTE_P &&
+            (perm & ~PTE_SYSCALL) == 0;
+        if (!is_src_va_legal || !is_perm_right)
+            return -E_INVAL;
+
+        struct PageInfo *page;
+        pte_t *entry;
+        if ((page = page_lookup(curenv->env_pgdir, srcva, &entry)) == NULL)
+            return -E_INVAL; // srcva is not mapped into src_env
+        if ((perm & PTE_W) == PTE_W && entry && (*entry & PTE_W) == 0)
+            return -E_INVAL;
+
+        if ((r = page_insert(dst_e->env_pgdir, page, dstva, perm)) < 0)
+            return r;
+        page_transfered = 1;
+    }
+
+    dst_e->env_ipc_recving = 0;
+    dst_e->env_ipc_from = curenv->env_id;
+    dst_e->env_ipc_value = value;
+    dst_e->env_ipc_perm =  page_transfered ? perm : 0;
+    dst_e->env_tf.tf_regs.reg_eax = 0;
+
+    dst_e->env_status = ENV_RUNNABLE;
+    return 0;
 }
 
 // Block until a value is ready.  Record that you want to receive
@@ -348,7 +391,16 @@ static int
 sys_ipc_recv(void *dstva)
 {
 	// LAB 4: Your code here.
-	panic("sys_ipc_recv not implemented");
+    curenv->env_ipc_recving = 1;
+    if ((uintptr_t)dstva < UTOP && (uintptr_t)dstva % PGSIZE != 0)
+        return -E_INVAL;
+
+    if ((uintptr_t)dstva < UTOP)
+        curenv->env_ipc_dstva = dstva;
+
+    curenv->env_status = ENV_NOT_RUNNABLE;
+    sched_yield(); // no return
+
 	return 0;
 }
 
@@ -384,6 +436,10 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
         return sys_page_unmap((envid_t)a1, (void *)a2);
     case SYS_env_set_pgfault_upcall:
         return sys_env_set_pgfault_upcall((envid_t)a1, (void *)a2);
+    case SYS_ipc_try_send:
+        return (int32_t) sys_ipc_try_send((envid_t)a1, (uint32_t)a2, (void*)a3, (unsigned)a4);
+    case SYS_ipc_recv:
+        return (int32_t) sys_ipc_recv((void*)a1);
 	default:
 		return -E_INVAL;
 	}
