@@ -372,8 +372,7 @@ load_icode(struct Env *e, uint8_t *binary)
         region_alloc(e, (uintptr_t *)ph->p_va, ph->p_memsz);
         memcpy((uintptr_t *)ph->p_va, binary + ph->p_offset, ph->p_filesz);
         assert(ph->p_filesz <= ph->p_memsz);
-        memset((uintptr_t *)ph->p_va + ph->p_filesz, 0,
-                ph->p_memsz - ph->p_filesz);
+        memset((uintptr_t *)(ph->p_va + ph->p_filesz), 0, ph->p_memsz - ph->p_filesz);
     }
     // Set up the entry
     e->env_tf.tf_eip = elf_hdr->e_entry;
@@ -396,17 +395,16 @@ void
 env_create(uint8_t *binary, enum EnvType type)
 {
 	// LAB 3: Your code here.
-<<<<<<< HEAD
-
-	// If this is the file server (type == ENV_TYPE_FS) give it I/O privileges.
-	// LAB 5: Your code here.
-=======
     struct Env *e;
     assert(env_alloc(&e, 0 /* parent_id is 0 */) == 0);
     load_icode(e, binary);
     e->env_type = type;
     e->env_parent_id = 0;
->>>>>>> lab4
+
+	// If this is the file server (type == ENV_TYPE_FS) give it I/O privileges.
+	// LAB 5: Your code here.
+    if (type == ENV_TYPE_FS)
+        e->env_tf.tf_eflags |= FL_IOPL_3;
 }
 
 //

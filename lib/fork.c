@@ -68,8 +68,13 @@ duppage(envid_t envid, unsigned pn)
 
 	// LAB 4: Your code here.
     pte_t entry = uvpt[pn];
-    bool require_cow = (entry & PTE_W) == PTE_W || (entry & PTE_COW) == PTE_COW;
+    bool is_shared = (entry & PTE_SHARE) == PTE_SHARE; 
+    bool require_cow = !is_shared && ((entry & PTE_W) == PTE_W || (entry & PTE_COW) == PTE_COW);
     int perm = PTE_U | PTE_P;
+    if (is_shared) {
+        assert((entry & PTE_COW) != PTE_COW);
+        perm |= entry & PTE_SYSCALL;
+    }
     if (require_cow)
         perm |= PTE_COW;
 
@@ -78,15 +83,14 @@ duppage(envid_t envid, unsigned pn)
         panic("sys_page_map: %e", r);
 
     // make the addr copy-on-write again
-    // The reason of this ordering is that if we remapped the page that is
-    // being visited to COW, as stack grows, a new writable page will be
-    // remapped to the addr again, which later makes the child's addr mapped to
-    // that writable page. The child lost context until next duppage call on
-    // the same page.
+    // The reason of this ordering (remapping COW after mapping into child)is
+    // that if we remapped the page being visited to COW, as stack grows, a new
+    // writable page will be remapped to the addr again, which later makes the
+    // child's addr mapped to that writable page. The child lost context until
+    // next duppage call on the same page.
     //
-    // The reason we need to mark it COW again is that if the parent's stack pointer
-    // reaches to the COW page before mapping into child, the page becomes writable.
-    // The child's addr is mapped to a writable page again.
+    // The reason we need to mark it COW again is that page could become writable
+    // just as we are mapping into child.
     if (require_cow && (r = sys_page_map(0, addr, 0, addr, perm)) < 0)
         panic("sys_page_map: %e", r);
 

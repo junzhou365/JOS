@@ -1,7 +1,2 @@
-<<<<<<< HEAD
 LAB=5
 PACKAGEDATE=Thu Nov 3 09:15:49 EDT 2016
-=======
-LAB=4
-PACKAGEDATE=Wed Oct 12 17:19:29 EDT 2016
->>>>>>> lab4
