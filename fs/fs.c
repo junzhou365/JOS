@@ -62,7 +62,21 @@ alloc_block(void)
 	// super->s_nblocks blocks in the disk altogether.
 
 	// LAB 5: Your code here.
-	panic("alloc_block not implemented");
+    uint32_t blockno = 0;
+    for (uint32_t i = 2; i < super->s_nblocks; i++) {
+        if (bitmap[i/32] & 1<<(i%32)) {
+            bitmap[i/32] &= ~(1<<(i%32));
+            blockno = i;
+            break;
+        }
+    }
+
+    if (blockno != 0) {
+        // flush bitmap change
+        flush_block(diskaddr(2));
+        return blockno;
+    }
+
 	return -E_NO_DISK;
 }
 
@@ -134,8 +148,28 @@ fs_init(void)
 static int
 file_block_walk(struct File *f, uint32_t filebno, uint32_t **ppdiskbno, bool alloc)
 {
-       // LAB 5: Your code here.
-       panic("file_block_walk not implemented");
+    int r;
+    uint32_t *block_addr;
+    if (filebno < NDIRECT) {
+        block_addr = &f->f_direct[filebno];
+    } else if (filebno >= NDIRECT && filebno < NDIRECT + NINDIRECT) {
+        if (!f->f_indirect && !alloc) {
+            return -E_NOT_FOUND;
+        } else if (!f->f_indirect && alloc) {
+            if ((r = alloc_block()) < 0)
+                return r;
+            f->f_indirect = r;
+        }
+
+        block_addr = (uint32_t *)diskaddr(f->f_indirect) + (filebno - NDIRECT);
+    } else {
+        return -E_INVAL;
+    }
+
+    if (ppdiskbno)
+        *ppdiskbno = block_addr;
+
+    return 0;
 }
 
 // Set *blk to the address in memory where the filebno'th
@@ -149,8 +183,17 @@ file_block_walk(struct File *f, uint32_t filebno, uint32_t **ppdiskbno, bool all
 int
 file_get_block(struct File *f, uint32_t filebno, char **blk)
 {
-       // LAB 5: Your code here.
-       panic("file_get_block not implemented");
+    int r;
+    uint32_t *blockno;
+    if ((r = file_block_walk(f, filebno, &blockno, 1 /*alloc*/)) < 0)
+        return r;
+    if (*blockno == 0) {
+        if ((r = alloc_block()) < 0)
+            return r;
+        *blockno = r;
+    }
+    *blk = diskaddr(*blockno);
+    return 0;
 }
 
 // Try to find a file named "name" in dir.  If so, set *file to it.

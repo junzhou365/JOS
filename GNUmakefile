@@ -99,6 +99,8 @@ CFLAGS += -I$(TOP)/net/lwip/include \
 # Add -fno-stack-protector if the option exists.
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 
+CFLAGS += -O0
+
 # Common linker flags
 LDFLAGS := -m elf_i386
 
@@ -320,7 +322,6 @@ warn:
 	echo "this is the 2016 6.828 lab"; \
 	echo "******* WARNING ********* [39m"; \
 	echo; \
-	false;
 
 #handin-prep:
 #	@./handin-prep

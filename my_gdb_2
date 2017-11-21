@@ -1,0 +1,62 @@
+add-symbol-file obj/user/spin 0x00800020
+set $syscall_call = 0x800dc1
+set $syscall_ret = 0x800e10
+set $vcprint_ret = 0x800242
+set $interrupt = 0xf01050a0
+set can-use-hw-watchpoints 1
+set logging on
+set logging redirect on
+b *$syscall_call
+b *$syscall_ret
+b *$vcprint_ret
+b *$interrupt
+set height 0
+continue
+watch *(uint32_t *)0xeebfdf54
+
+while 1
+    if $eip == $vcprint_ret
+        p "==== vcprint_ret start ===="
+        x/4x $esp
+        bt
+        set $suck = *(uint32_t *)$esp
+        if $suck > 0xf00000 || $suck < 0xf000
+            p "this sucks"
+        end
+        p "==== vcprint_ret end ===="
+        p "==== next ===="
+        si
+        si
+        p "==== end ===="
+    else
+        if $eip == $syscall_ret || $eip == $syscall_call
+            if $eip == $syscall_ret
+                p "==== syscall_ret start ===="
+                bt
+                si
+                si
+                p "==== syscall_ret end ===="
+            else
+                p "==== syscall_call start ===="
+                bt
+                si
+                si
+                p "==== syscall_call end ===="
+            end
+        else
+            if $eip == $interrupt
+                p "<<<<========!!!! INTERRUPT START !!!!========>>>>"
+                bt
+                p *tf
+                p "<<<<========!!!! INTERRUPT END   !!!!========>>>>"
+            else
+                p "==== watchpoint start ===="
+                bt
+                p "==== watchpoint end ===="
+            end
+        end
+    end
+    continue
+end
+
+

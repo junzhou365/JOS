@@ -1,0 +1,49 @@
+    #if $eip == $i_31
+        #x/12x $esp
+        #set $suck = *(uint32_t *)$esp
+        #if $suck > 0xf00000 || $suck < 0xf000
+            #bt
+            #p "this sucks"
+        #end
+    #end
+    if $eip == $i_32
+        #x/4x $esp
+        #set $suck = *(uint32_t *)$esp
+        #if $suck > 0xf00000 || $suck < 0xf000
+            #bt
+            #p "this sucks"
+        #end
+        si
+        si
+        si
+        si
+        si
+        si
+        si
+        si
+        si
+        si
+        si
+        si
+        si
+        si
+        si
+        si
+        si
+        si
+        si
+        si
+        si
+        si
+        si
+        si
+        si
+        si
+        si
+        si
+        si
+        si
+        si
+        #x/4x *(uint32_t *)($esp + 16)
+    end
+
