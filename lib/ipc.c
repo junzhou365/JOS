@@ -61,8 +61,8 @@ ipc_send(envid_t to_env, uint32_t val, void *pg, int perm)
             sys_yield();
     }
     if (r != 0)
-        panic("sys_ipc_try_send: %e, env%d, pg: %x, perm: %d",
-            r, thisenv->env_id, pg, perm);
+        panic("sys_ipc_try_send: %e, env: %d, to_env: %d, pg: %x, perm: %d",
+            r, thisenv->env_id, to_env, pg, perm);
 }
 
 // Find the first environment of the given type.  We'll use this to

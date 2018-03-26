@@ -1,4 +1,6 @@
+#include <inc/error.h>
 #include <inc/memlayout.h>
+#include <inc/string.h>
 #include <kern/e1000.h>
 #include <kern/pmap.h>
 
@@ -27,6 +29,11 @@
 #define E1000_TCTL_PSP_MASK    0x00000008    /* pad short packets */
 #define E1000_TCTL_CT_MASK     0x00000ff0    /* collision threshold */
 #define E1000_TCTL_COLD_MASK   0x003ff000    /* collision distance */
+
+/* Transmit Descriptor bit definitions */
+#define E1000_TXD_CMD_EOP    0x01 /* End of Packet */
+#define E1000_TXD_CMD_RS     0x08 /* Report Status */
+#define E1000_TXD_STAT_DD    0x00000001 /* Descriptor Done */
 
 #define RADDR(x) ((x) / 4)
 #define TX_N 16 // 16 * 16 = 256 < 4K
@@ -93,14 +100,33 @@ attach_e1000(struct pci_func *pcif)
     // See table 13-77
     e1000_addr[RADDR(E1000_TIPG)] = 10 + (8 << 10) + (6 << 20);
 
-
-    // test
-    transmit_packets();
-
     return 0;
 }
 
-void
-transmit_packets()
+int
+transmit_packets(char *data, int len)
 {
+    uint32_t tail_index = e1000_addr[RADDR(E1000_TDT)];
+    assert(tail_index < TX_N && tail_index >= 0);
+
+    struct Tx_Desc *tail = &tx_descs[tail_index];
+    bool is_rs_set = (tail->cmd & E1000_TXD_CMD_RS) != 0;
+    bool is_dd_set = (tail->status & E1000_TXD_STAT_DD) != 0;
+
+    /*cprintf("The packet is:");*/
+    /*for (int i = 0; i < len; i++)*/
+        /*cprintf("%x", data[i]);*/
+    /*cprintf("\n");*/
+    if (!is_rs_set || is_dd_set) {
+        memcpy((uint32_t *)(TX_BASE + PGSIZE * tail_index), data, len);
+        tail->cmd |= (E1000_TXD_CMD_RS | E1000_TXD_CMD_EOP);
+        tail->length = len;
+        tail->status &= ~E1000_TXD_STAT_DD;
+        e1000_addr[RADDR(E1000_TDT)] = (tail_index + 1) % TX_N;
+    } else {
+        // let caller wait
+        return -E_QUEUE_FULL;
+    }
+
+    return 0;
 }

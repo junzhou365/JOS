@@ -31,7 +31,7 @@ umain(int argc, char **argv)
 		pkt->jp_len = snprintf(pkt->jp_data,
 				       PGSIZE - sizeof(pkt->jp_len),
 				       "Packet %02d", i);
-		cprintf("Transmitting packet %d\n", i);
+		cprintf("[%d]: Transmitting packet %d\n", thisenv->env_id, i);
 		ipc_send(output_envid, NSREQ_OUTPUT, pkt, PTE_P|PTE_W|PTE_U);
 		sys_page_unmap(0, pkt);
 	}

@@ -6,6 +6,7 @@
 #include <inc/assert.h>
 
 #include <kern/env.h>
+#include <kern/e1000.h>
 #include <kern/pmap.h>
 #include <kern/trap.h>
 #include <kern/syscall.h>
@@ -439,6 +440,14 @@ sys_time_msec(void)
     return time_msec();
 }
 
+static int
+sys_send_packets(char *data, int len)
+{
+    user_mem_assert(curenv, data, len, PTE_U | PTE_P);
+
+    return transmit_packets(data, len);
+}
+
 // Dispatches to the correct kernel function, passing the arguments.
 int32_t
 syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, uint32_t a5)
@@ -479,6 +488,8 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
         return (int32_t) sys_ipc_recv((void*)a1);
     case SYS_time_msec:
         return (int32_t) sys_time_msec();
+    case SYS_send_packets:
+        return (int32_t) sys_send_packets((void *)a1, (int)a2);
 	default:
 		return -E_INVAL;
 	}
