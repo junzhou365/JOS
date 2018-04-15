@@ -128,3 +128,9 @@ sys_send_packets(char *data, int len)
 {
     return syscall(SYS_send_packets, 0, (uint32_t) data, len, 0, 0, 0);
 }
+
+int
+sys_recv_packets(char *data, int *len, bool wait)
+{
+    return syscall(SYS_recv_packets, 0, (uint32_t) data, (uint32_t) len, (uint32_t) wait, 0, 0);
+}

@@ -151,7 +151,7 @@ sys_env_set_trapframe(envid_t envid, struct Trapframe *tf)
 	e->env_tf.tf_ss = GD_UD | 3;
 	e->env_tf.tf_cs = GD_UT | 3;
     e->env_tf.tf_eflags |= FL_IF;
-    
+
     return 0;
 }
 
@@ -440,12 +440,60 @@ sys_time_msec(void)
     return time_msec();
 }
 
+static void
+net_intr_handler(bool is_read, envid_t id)
+{
+    int r;
+    struct Env *e ;
+    if (is_read) {
+        envid2env(id, &e, false);
+    } else {
+        envid2env(id, &e, false);
+    }
+
+    // Since we are in others' env, we can't directly call recv or trans again.
+    // Wake up blocked envs and let them retry.
+    e->env_tf.tf_regs.reg_eax = -E_NET_RETRY;
+    e->env_status = ENV_RUNNABLE;
+}
+
 static int
 sys_send_packets(char *data, int len)
 {
     user_mem_assert(curenv, data, len, PTE_U | PTE_P);
 
-    return transmit_packets(data, len);
+    curenv->env_net_intr_handler = 0;
+
+    int r;
+    if ((r = transmit_packets(data, len, curenv->env_id)) == -E_NET_TRAN_QUEUE_FULL) {
+        curenv->env_net_intr_handler = &net_intr_handler;
+        curenv->env_status = ENV_NOT_RUNNABLE;
+        sched_yield(); // no return
+    }
+
+    return 0;
+}
+
+static int
+sys_recv_packets(char *data, int *len, bool wait)
+{
+    user_mem_assert(curenv, data, 2048, PTE_U | PTE_P | PTE_W); // max packet len is 2048
+    user_mem_assert(curenv, len, 4, PTE_U | PTE_P | PTE_W);
+
+    curenv->env_net_intr_handler = 0;
+
+    int r;
+    if ((r = receive_packets(data, len, curenv->env_id, wait)) == -E_NET_RECV_QUEUE_EMPTY) {
+        if (wait) {
+            curenv->env_net_intr_handler = &net_intr_handler;
+            curenv->env_status = ENV_NOT_RUNNABLE;
+            sched_yield(); // no return
+        } else {
+            return r;
+        }
+    }
+
+    return 0;
 }
 
 // Dispatches to the correct kernel function, passing the arguments.
@@ -490,6 +538,8 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
         return (int32_t) sys_time_msec();
     case SYS_send_packets:
         return (int32_t) sys_send_packets((void *)a1, (int)a2);
+    case SYS_recv_packets:
+        return (int32_t) sys_recv_packets((void *)a1, (void *)a2, (bool)a3);
 	default:
 		return -E_INVAL;
 	}

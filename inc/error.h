@@ -27,7 +27,9 @@ enum {
 	E_NOT_SUPP	,	// Operation not supported
 
     // network error
-    E_QUEUE_FULL,
+    E_NET_TRAN_QUEUE_FULL,
+    E_NET_RECV_QUEUE_EMPTY,
+    E_NET_RETRY,
 
 	MAXERROR
 };

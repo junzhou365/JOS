@@ -77,7 +77,19 @@ static int
 send_data(struct http_request *req, int fd)
 {
 	// LAB 6: Your code here.
-	panic("send_data not implemented");
+    int r;
+    char buf[BUFFSIZE];
+    cprintf("*** === buf addr: %x\n", &buf);
+    /*if ((r = sys_page_alloc(0, &buf)) < 0)*/
+        /*panic("Failed to allocate page");*/
+    int n;
+    if ((n = read(fd, &buf, BUFFSIZE)) < 0)
+        panic("read failed");
+
+    if (write(req->sock, &buf, n) != n)
+        panic("write failed");
+
+    return 0;
 }
 
 static int
@@ -223,7 +235,16 @@ send_file(struct http_request *req)
 	// set file_size to the size of the file
 
 	// LAB 6: Your code here.
-	panic("send_file not implemented");
+    cprintf("*** === File: %s, size is %d\n", req->url, file_size);
+    struct Stat st;
+	if ((fd = open(req->url, O_RDONLY)) < 0)
+        send_error(req, 404);
+
+    if (fstat(fd, &st) < 0 || st.st_isdir)
+        send_error(req, 404);
+
+    file_size = st.st_size;
+    cprintf("*** === File: %s, size is %d\n", req->url, file_size);
 
 	if ((r = send_header(req, 200)) < 0)
 		goto end;

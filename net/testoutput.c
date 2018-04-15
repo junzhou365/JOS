@@ -1,7 +1,7 @@
 #include "ns.h"
 
 #ifndef TESTOUTPUT_COUNT
-#define TESTOUTPUT_COUNT 10
+#define TESTOUTPUT_COUNT 100
 #endif
 
 static envid_t output_envid;

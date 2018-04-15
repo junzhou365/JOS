@@ -2,6 +2,15 @@
 
 extern union Nsipc nsipcbuf;
 
+static void
+print_packet(char *data, int len)
+{
+    cprintf("The sent packet len is: %d, content is:", len);
+    for (int i = 0; i < len; i++)
+        cprintf("%x", data[i]);
+    cprintf("\n");
+}
+
 void
 output(envid_t ns_envid)
 {
@@ -26,13 +35,9 @@ output(envid_t ns_envid)
 
         pkt = (struct jif_pkt *)&nsipcbuf;
 
-        r = -E_QUEUE_FULL;
-        while (r == -E_QUEUE_FULL) {
-            r = sys_send_packets(pkt->jp_data, pkt->jp_len);
-            if (r == -E_QUEUE_FULL)
-                sys_yield();
-            else if (r < 0)
-                panic("Failed to call sys_send_packets");
-        }
+        print_packet(pkt->jp_data, pkt->jp_len);
+
+        while ((r = sys_send_packets(pkt->jp_data, pkt->jp_len)) < 0)
+            ;
     }
 }

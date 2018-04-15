@@ -7,6 +7,7 @@
 #include <kern/console.h>
 #include <kern/monitor.h>
 #include <kern/env.h>
+#include <kern/e1000.h>
 #include <kern/syscall.h>
 #include <kern/sched.h>
 #include <kern/kclock.h>
@@ -248,6 +249,10 @@ trap_dispatch(struct Trapframe *tf)
         return;
     } else if (tf->tf_trapno == IRQ_OFFSET + IRQ_SERIAL) {
         serial_intr();
+        return;
+    } else if (tf->tf_trapno == IRQ_OFFSET + IRQ_NETWORK) {
+        lapic_eoi();
+        network_intr();
         return;
     }
 

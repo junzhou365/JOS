@@ -58,7 +58,7 @@ sched_yield(void)
     }
 
 	// sched_halt never returns
-	sched_halt();
+    sched_halt();
 }
 
 // Halt this CPU when there is nothing to do. Wait until the
@@ -77,11 +77,11 @@ sched_halt(void)
 		     envs[i].env_status == ENV_DYING))
 			break;
 	}
-	if (i == NENV) {
-		cprintf("No runnable environments in the system!\n");
-		while (1)
-			monitor(NULL);
-	}
+    if (i == NENV) {
+        cprintf("No runnable environments in the system!\n");
+        while (1)
+            monitor(NULL);
+    }
 
 	// Mark that no environment is running on this CPU
 	curenv = NULL;
