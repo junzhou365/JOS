@@ -217,8 +217,6 @@ attach_e1000(struct pci_func *pcif)
     e1000_addr[RADDR(E1000_RDH)] = 0;
     e1000_addr[RADDR(E1000_RDT)] = R_N-1;
 
-    /*e1000_addr[RADDR(E1000_RCTL)] |=*/
-        /*E1000_RCTL_SZ_2048 | E1000_RCTL_SECRC | E1000_RCTL_RDMTS_EIGTH | E1000_RCTL_UPE;*/
     e1000_addr[RADDR(E1000_RCTL)] |= E1000_RCTL_SZ_2048 | E1000_RCTL_SECRC;
     e1000_addr[RADDR(E1000_RCTL)] |= E1000_RCTL_EN;
 
@@ -239,7 +237,6 @@ transmit_packets(char *data, int len, envid_t id)
     bool is_dd_set = (tail->status & E1000_TXD_STAT_DD) != 0;
 
     if (is_dd_set) {
-        cprintf("*** ==== *** sending\n");
         // If we assert this intr after setting another desc, there will be
         // another hard intr
         e1000_addr[RADDR(E1000_ICR)] |= E1000_ICR_TXDW;
@@ -250,23 +247,11 @@ transmit_packets(char *data, int len, envid_t id)
         e1000_addr[RADDR(E1000_TDT)] = (tail_index + 1) % TX_N;
     } else {
         // let caller sleep
-        cprintf("*** ==== *** send sleeps\n");
-        /*e1000_addr[RADDR(E1000_IMS)] |= E1000_IMS_TXDW;*/
         sender_id = id;
         return -E_NET_TRAN_QUEUE_FULL;
     }
 
-    cprintf("*** ==== *** send done\n");
     return 0;
-}
-
-static void
-print_packet(char *data, int len)
-{
-    cprintf("The <*received*> packet len is: %d, content is:", len);
-    for (int i = 0; i < len; i++)
-        cprintf("%x", data[i]);
-    cprintf("\n");
 }
 
 int
@@ -281,11 +266,8 @@ receive_packets(char *data, int *len, envid_t id, bool wait)
     bool is_eop = (tail->status & E1000_RXD_STAT_EOP) != 0;
 
     uint32_t addr = R_BASE + PGSIZE * next;
-    /*cprintf("head: %d, tail: %d\n", head_index, tail_index);*/
 
     if (is_dd_set && is_eop) {
-        /*cprintf("*** ==== *** receiving\n");*/
-        /*e1000_addr[RADDR(E1000_ICR)] |= E1000_ICR_RXT0;*/
         memcpy(data, (char *)addr, tail->length);
         *len = tail->length;
         tail->status = 0; // zero out according to spec
@@ -295,15 +277,12 @@ receive_packets(char *data, int *len, envid_t id, bool wait)
     } else {
         if (wait) {
             // let caller sleep
-            cprintf("*** ==== *** recv sleeps\n");
-            /*e1000_addr[RADDR(E1000_IMS)] |= E1000_IMS_RXT0;*/
             e1000_addr[RADDR(E1000_ICS)] |= E1000_ICS_RXT0;
             receiver_id = id;
         }
         return -E_NET_RECV_QUEUE_EMPTY;
     }
 
-    cprintf("*** ==== *** recv done\n");
     return 0;
 }
 
@@ -320,19 +299,15 @@ network_intr()
         (e1000_addr[RADDR(E1000_IMS)] & E1000_IMS_TXDW);
     bool is_read = (icr & E1000_ICR_RXT0) &&
         (e1000_addr[RADDR(E1000_IMS)] & E1000_IMS_RXT0);
-    cprintf("*** === *** New intr: icr: %x, Read: %d, Write: %d, \n",
-        icr, is_read, is_write);
 
     int r;
     struct Env *e = NULL;
     if (is_read && !is_write) {
         envid2env(receiver_id, &e, false);
         e1000_addr[RADDR(E1000_ICR)] = E1000_ICR_RXT0;
-        /*e1000_addr[RADDR(E1000_IMC)] = E1000_IMC_RXT0;*/
     } else if (is_write && !is_read) {
         envid2env(sender_id, &e, false);
         e1000_addr[RADDR(E1000_ICR)] = E1000_ICR_TXDW;
-        /*e1000_addr[RADDR(E1000_IMC)] = E1000_IMC_TXDW;*/
     } else {
         panic("Bad interrupt");
     }
