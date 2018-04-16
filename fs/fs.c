@@ -64,7 +64,7 @@ alloc_block(void)
 	// LAB 5: Your code here.
     uint32_t blockno = 0;
     for (uint32_t i = 2; i < super->s_nblocks; i++) {
-        if (bitmap[i/32] & 1<<(i%32)) {
+        if (block_is_free(i)) {
             bitmap[i/32] &= ~(1<<(i%32));
             blockno = i;
             break;
@@ -73,7 +73,7 @@ alloc_block(void)
 
     if (blockno != 0) {
         // flush bitmap change
-        flush_block(diskaddr(2));
+        flush_block(diskaddr(blockno / BLKBITSIZE + 2));
         return blockno;
     }
 
